@@ -609,3 +609,16 @@ body.camcorder-mode #scene-container canvas { display: block; box-shadow: 0 0 0 
 .cam-ai-form input { flex: 1; min-width: 0; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.15); color: #eee; border-radius: 6px; padding: 5px 6px; font-size: 9.5px; font-family: inherit; }
 .cam-ai-form button { font-size: 9.5px; padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(227,180,92,.5); background: rgba(227,180,92,.15); color: #f0d9a8; cursor: pointer; font-family: inherit; }
 #move-indicator { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 5; font-size: 11px; color: #e3b45c; opacity: .8; pointer-events: none; letter-spacing: 2px; }
+
+/* ---------- optics controls ---------- */
+.optics-row { display: flex; align-items: center; gap: 4px; font-size: 9.5px; color: rgba(240,235,220,.7); }
+.optics-row > span { width: 34px; flex: 0 0 34px; }
+.opt-btn {
+  font-size: 9px; padding: 2px 6px; border-radius: 5px;
+  border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.05);
+  color: rgba(240,235,220,.75); cursor: pointer; font-family: inherit;
+}
+.opt-btn.active { border-color: rgba(227,180,92,.8); background: rgba(227,180,92,.18); color: #f0d9a8; }
+.lens-readout { font-size: 9.5px; line-height: 1.5; color: #e8eef8; border-top: 1px dashed rgba(255,255,255,.15); padding-top: 5px; }
+.lens-readout b { color: #f0d9a8; }
+.lens-readout .muted { color: rgba(240,235,220,.5); }

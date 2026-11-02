@@ -100,7 +100,19 @@
 
       <div class="cam-panel expert hidden" id="cam-panel-expert">
         <div class="cp-title">专家模式 · 手动参数</div>
-        <label>焦距 <input type="range" id="exp-focal" min="24" max="85" step="1" value="35" /><b id="exp-focal-val">35mm</b></label>
+        <label>镜头 <input type="range" id="exp-focal" min="24" max="200" step="1" value="35" /><b id="exp-focal-val">35mm</b></label>
+        <div class="optics-row"><span>增距镜</span>
+          <button class="opt-btn active" data-tele="1">无</button>
+          <button class="opt-btn" data-tele="1.4">×1.4</button>
+          <button class="opt-btn" data-tele="2">×2</button>
+        </div>
+        <div class="optics-row"><span>滤镜</span>
+          <button class="opt-btn active" data-nd="0">无</button>
+          <button class="opt-btn" data-nd="1">ND8</button>
+          <button class="opt-btn" data-nd="2">ND64</button>
+          <button class="opt-btn" data-pol="1">偏振</button>
+        </div>
+        <div class="lens-readout" id="lens-readout">等效 35mm · f/4.0 · 1/60s · ISO 400</div>
         <label>光圈 <input type="range" id="exp-fstop" min="1.4" max="16" step="0.1" value="4" /><b id="exp-fstop-val">f/4</b></label>
         <label>快门 <input type="range" id="exp-shutter" min="8" max="1000" step="1" value="60" /><b id="exp-shutter-val">1/60s</b></label>
         <label>ISO <input type="range" id="exp-iso" min="100" max="6400" step="50" value="400" /><b id="exp-iso-val">400</b></label>

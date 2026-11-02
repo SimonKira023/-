@@ -103,11 +103,61 @@ function scanlines(ctx, x, y, w, h, alpha = 0.18) {
   ctx.restore();
 }
 
+
+/* ---------------- 复古小游戏（按场景适合的体验） ---------------- */
+function drawPong(ctx, st) {
+  crtScreen(ctx, 300, 170, 360, 270, '#0a1a12');
+  ink(ctx, '#0d2b1d');
+  ctx.fillRect(300, 170, 360, 270);
+  ink(ctx, 'rgba(160,255,190,.25)');
+  for (let y = 170; y < 440; y += 24) ctx.fillRect(478, y, 4, 12);
+  const t = performance.now() / 1000;
+  const ballX = 480 + Math.sin(t * 1.7) * 130;
+  const ballY = 305 + Math.sin(t * 2.9) * 80;
+  ink(ctx, '#c8ffd8');
+  ctx.beginPath(); ctx.arc(ballX, ballY, 7, 0, 7); ctx.fill();
+  ctx.fillRect(320, ballY - 34 + Math.sin(t * 2.1) * 30, 12, 68);
+  ctx.fillRect(628, ballY - 34 + Math.sin(t * 1.3 + 1) * 30, 12, 68);
+  label(ctx, String(st.score || 0).padStart(2, '0'), 480, 200, 26, '#9fffb8', 'center');
+  label(ctx, 'PONG · 1972 家用游戏机', 300, 430, 12, 'rgba(150,230,180,.65)');
+  scanlines(ctx, 300, 170, 360, 270, 0.3);
+  ctx.restore();
+}
+function drawTetris(ctx, st) {
+  crtScreen(ctx, 240, 150, 480, 380, '#08160f');
+  const cols = 10; const rows = 16;
+  const cw = 28; const ox = 330; const oy = 180;
+  ink(ctx, 'rgba(120,255,170,.12)');
+  for (let i = 0; i <= cols; i++) ctx.fillRect(ox + i * cw, oy, 1, rows * cw);
+  for (let j = 0; j <= rows; j++) ctx.fillRect(ox, oy + j * cw, cols * cw, 1);
+  const t = performance.now() / 1000;
+  const fall = Math.floor((t * 2.2) % 14);
+  const shapes = [[[0, 0], [1, 0], [0, 1], [1, 1]], [[0, 0], [1, 0], [2, 0], [1, 1]], [[0, 0], [1, 0], [0, 1], [0, 2]]];
+  const shape = shapes[Math.floor(t / 6) % shapes.length];
+  const px = 3;
+  shape.forEach(([dx, dy]) => {
+    ink(ctx, '#7fffb0');
+    ctx.fillRect(ox + (px + dx) * cw + 1, oy + (fall + dy) * cw + 1, cw - 2, cw - 2);
+  });
+  // 已落下的块
+  ink(ctx, 'rgba(120,255,170,.55)');
+  for (let j = 13; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      if ((i * 7 + j * 3) % 5 < 3) ctx.fillRect(ox + i * cw + 1, oy + j * cw + 1, cw - 2, cw - 2);
+    }
+  }
+  label(ctx, `SCORE ${String(st.score || 0).padStart(4, '0')}`, 740, 200, 14, '#7fffb0', 'right');
+  label(ctx, 'TETRIS · 1984', 740, 230, 12, 'rgba(150,230,180,.6)', 'right');
+  scanlines(ctx, 240, 150, 480, 380, 0.28);
+  ctx.restore();
+}
+
 /* ---------------- 各展品模拟 ---------------- */
 const TYPES = {
   tv(st) {
     return {
       draw(ctx, t) {
+        if (st.pong) { drawPong(ctx, st); return; }
         crtScreen(ctx, 300, 170, 360, 270, st.on ? '#101a16' : '#05070b');
         if (st.on) {
           if (st.mode === 'static') {
@@ -134,8 +184,12 @@ const TYPES = {
         ctx.restore();
       },
       action(st) { st.on = !st.on; st.mode = 'static'; setTimeout(() => { st.mode = 'channel'; }, 900); noise(0.5, 0.05); tone(300, 0.2, 'square', 0.03, 120); },
-      extras: [{ label: '换台', fn(st) { st.channel = (st.channel % 3) + 1; st.on = true; st.mode = 'channel'; beep(1, 660); } }],
-      status: '按下「开机换台」，听电子管电视的启动声',
+      extras: [
+        { label: '换台', fn(st) { st.channel = (st.channel % 3) + 1; st.on = true; st.mode = 'channel'; beep(1, 660); } },
+        { label: '接游戏机', fn(st) { st.pong = true; beep(2, 880); } },
+        { label: '击球', fn(st) { st.score = (st.score || 0) + 1; tone(1200, 0.06, 'square', 0.03); } },
+      ],
+      status: '按下「开机换台」，也可以「接游戏机」玩一局 Pong',
     };
   },
 
@@ -274,6 +328,7 @@ const TYPES = {
   crt(st) {
     return {
       draw(ctx) {
+        if (st.tetris) { drawTetris(ctx, st); return; }
         crtScreen(ctx, 240, 150, 480, 380, st.on ? '#08160f' : '#05070b');
         if (st.on) {
           const lines = st.boot
@@ -297,7 +352,12 @@ const TYPES = {
         ctx.fill();
       },
       action(st) { st.on = true; st.boot = true; beep(2, 1200); setTimeout(() => { st.boot = false; }, 1600); },
-      status: '按下开机键，看 CRT 自检画面',
+      extras: [
+        { label: '玩俄罗斯方块', fn(st) { st.tetris = true; beep(2, 990); } },
+        { label: '加速', fn(st) { st.score = (st.score || 0) + 10; tone(600, 0.08, 'square', 0.03); } },
+        { label: '退出游戏', fn(st) { st.tetris = false; } },
+      ],
+      status: '按下开机键，看 CRT 自检画面；也可以玩一局俄罗斯方块',
     };
   },
 

@@ -41,7 +41,7 @@ const state = {
     walking: 0,
     expert: false,
     params: { exposure: 1.0, grain: 0.085, warm: 0.13, saturation: 1.0, smear: 0, focusBlur: 0, vignette: 0.62 },
-    expertParams: { focal: 35, fstop: 4, shutter: 60, iso: 400, wb: 5600, ev: 0 },
+    expertParams: { focal: 35, fstop: 4, shutter: 60, iso: 400, wb: 5600, ev: 0, tele: 1, nd: 0, polarizer: false },
   },
 };
 
@@ -463,20 +463,36 @@ function lensFov(focal) {
 function applyExpertParams() {
   const p = state.cam.expertParams;
   const c = state.cam.params;
-  state.view.fov = clamp(Math.round(lensFov(p.focal)), 18, 72);
-  c.exposure = clamp(Math.pow(2, p.ev) * Math.sqrt(p.iso / 400) * Math.sqrt(60 / Math.max(8, p.shutter)), 0.35, 2.4);
+  const tele = p.tele || 1;
+  const effFocal = (p.focal || 35) * tele;
+  const opticalFov = lensFov(effFocal);
+  // 数码变焦：超出光学焦距后只是裁切放大，画质会掉
+  state.view.fov = clamp(Math.round(opticalFov), 6, 72);
+  const ndFactor = Math.pow(2, p.nd || 0);
+  const effFstop = (p.fstop || 4) * tele;
+  c.exposure = clamp(
+    (Math.pow(2, p.ev) * Math.sqrt(p.iso / 400) * Math.sqrt(60 / Math.max(8, p.shutter))) / ndFactor * (p.polarizer ? 0.9 : 1),
+    0.2, 2.4
+  );
   c.grain = clamp(0.02 + (p.iso / 6400) * 0.9, 0.02, 0.26);
   c.warm = clamp((5600 - p.wb) / 6000, -0.18, 0.34);
-  c.vignette = clamp(0.28 + (5.6 - p.fstop) * 0.06, 0.2, 0.8);
+  c.vignette = clamp(0.28 + (5.6 - effFstop) * 0.04 + (tele > 1.5 ? 0.08 : 0), 0.2, 0.85);
   c.smear = p.shutter < 40 ? clamp((60 / p.shutter - 1) * 0.006, 0, 0.045) : 0;
-  c.focusBlur = clamp((p.focus || 0) / 100, 0, 1) * 0.6;
-  c.saturation = clamp(p.saturation ?? 1.0, 0.2, 1.6);
+  // 长焦 + 增距镜会引入轻微锐度下降（老玻璃）
+  c.focusBlur = clamp((p.focus || 0) / 100 * 0.6 + (tele - 1) * 0.06, 0, 0.7);
+  c.saturation = clamp((p.saturation ?? 1.0) * (p.polarizer ? 1.12 : 1), 0.2, 1.6);
   camUniforms.saturation.value = c.saturation;
   camUniforms.smear.value = c.smear;
   camUniforms.focusBlur.value = c.focusBlur;
   camUniforms.vignette.value = c.vignette;
   applyCamParams();
   syncExpertUI();
+  const ro = $('lens-readout');
+  if (ro) {
+    const f = Math.round(effFocal);
+    const glass = tele > 1 ? ` + ${tele}× 增距镜` : '';
+    ro.innerHTML = `等效 <b>${f}mm</b>${glass} · f/${effFstop.toFixed(1)} · 1/${p.shutter}s · ISO ${p.iso}<br><span class="muted">${p.nd ? `ND${p.nd * 3} ` : ''}${p.polarizer ? '偏振镜 ' : ''}物理玻璃${tele > 1 ? '（更重、更贵，但更清楚）' : ''}</span>`;
+  }
   updateCamAdvice();
 }
 function syncExpertUI() {
@@ -521,7 +537,7 @@ function updateCamAdvice() {
   const eraTip = eraMeta().year === 1987 ? '1987 年家用录像：低对比、偏暖、颗粒中等' : eraMeta().year === 1994 ? '1994 年 Hi8：画质更好，颜色更干净' : '1980 年 VHS：低分辨率、扫描线与色差明显';
   const tip = $('cam-ai-text');
   if (tip && !tip.dataset.locked) {
-    tip.textContent = `当前 ${eraTip}。可以让我按“风格”调：家庭录像 / 电视新闻 / 低照度夜景 / 电影感 / 黑白。`;
+    tip.textContent = `当前 ${eraTip}。想拍更远：优先换长焦或加增距镜（物理玻璃，清楚但更重更贵）；数码变焦只是裁切，越远越糊。`;
   }
 }
 function applyCameraStyle(a) {
@@ -1116,11 +1132,19 @@ async function execActions(actions, traceEl) {
       await sleep(160);
     } else if (a.type === 'camera') {
       if (!state.cam.active) enterCamcorder();
-      if (a.zoom) setView(state.view.yaw, state.view.pitch, clamp(a.zoom, 18, 72), 600);
-      if (typeof a.exposure === 'number') state.cam.params.exposure = clamp(a.exposure, 0.4, 2.2);
-      if (typeof a.grain === 'number') state.cam.params.grain = clamp(a.grain, 0, 0.3);
-      if (typeof a.warm === 'number') state.cam.params.warm = clamp(a.warm, -0.25, 0.4);
-      applyCamParams();
+      if (a.focal || a.tele || a.nd) {
+        setExpertMode(true);
+        if (a.focal) state.cam.expertParams.focal = clamp(a.focal, 24, 200);
+        if (a.tele) state.cam.expertParams.tele = a.tele;
+        if (typeof a.nd === 'number') state.cam.expertParams.nd = a.nd;
+        applyExpertParams();
+      } else {
+        if (a.zoom) setView(state.view.yaw, state.view.pitch, clamp(a.zoom, 18, 72), 600);
+        if (typeof a.exposure === 'number') state.cam.params.exposure = clamp(a.exposure, 0.4, 2.2);
+        if (typeof a.grain === 'number') state.cam.params.grain = clamp(a.grain, 0, 0.3);
+        if (typeof a.warm === 'number') state.cam.params.warm = clamp(a.warm, -0.25, 0.4);
+        applyCamParams();
+      }
       await sleep(160);
     } else if (a.type === 'cameraStyle') {
       applyCameraStyle(a);
@@ -1367,6 +1391,27 @@ function bindUI() {
   if (expertToggle) expertToggle.addEventListener('click', () => setExpertMode(true));
   const expertClose = $('btn-expert-close');
   if (expertClose) expertClose.addEventListener('click', () => setExpertMode(false));
+  document.querySelectorAll('[data-tele]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.cam.expertParams.tele = parseFloat(b.dataset.tele);
+      document.querySelectorAll('[data-tele]').forEach((x) => x.classList.toggle('active', x === b));
+      applyExpertParams();
+    });
+  });
+  document.querySelectorAll('[data-nd]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.cam.expertParams.nd = parseInt(b.dataset.nd, 10);
+      document.querySelectorAll('[data-nd]').forEach((x) => x.classList.toggle('active', x === b));
+      applyExpertParams();
+    });
+  });
+  document.querySelectorAll('[data-pol]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.cam.expertParams.polarizer = !state.cam.expertParams.polarizer;
+      b.classList.toggle('active', state.cam.expertParams.polarizer);
+      applyExpertParams();
+    });
+  });
   const EXPERT_MAP = {
     'exp-focal': 'focal', 'exp-fstop': 'fstop', 'exp-shutter': 'shutter', 'exp-iso': 'iso',
     'exp-wb': 'wb', 'exp-ev': 'ev', 'exp-sat': 'saturation', 'exp-focus': 'focus',
@@ -1488,10 +1533,25 @@ function bindUI() {
   canvas.style.cursor = 'grab';
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const lo = state.cam.active ? 18 : 18;
-    const hi = state.cam.active ? 72 : 80;
-    state.view.fov = clamp(state.view.fov + e.deltaY * 0.055, lo, hi);
     state.anim = null;
+    if (state.cam.active) {
+      // 数码变焦：光学到头之后只是裁切放大（会糊）
+      const p = state.cam.expertParams;
+      const effFocal = (p.focal || 35) * (p.tele || 1);
+      const opticalFov = lensFov(effFocal);
+      const dz = clamp(opticalFov / Math.max(6, state.view.fov), 1, 8);
+      const next = clamp(dz * (1 - e.deltaY * 0.0018), 1, 8);
+      state.view.fov = clamp(opticalFov / next, 6, 72);
+      const c = state.cam.params;
+      c.focusBlur = clamp((p.focus || 0) / 100 * 0.6 + (p.tele - 1) * 0.06 + (next - 1) * 0.12, 0, 0.9);
+      camUniforms.focusBlur.value = c.focusBlur;
+      const ro = $('lens-readout');
+      if (ro) ro.dataset.digital = next.toFixed(1);
+      return;
+    }
+    const lo = 18;
+    const hi = 80;
+    state.view.fov = clamp(state.view.fov + e.deltaY * 0.055, lo, hi);
   }, { passive: false });
 
   window.addEventListener('keydown', (e) => {
