@@ -380,6 +380,11 @@ function closeGodot() {
   $('modal-3d').classList.add('hidden');
   const frame = $('godot-frame');
   if (frame) frame.src = 'about:blank';
+  if (window.__default3dOpened) {
+    window.__default3dOpened = false;
+    const log = $('chat-log');
+    if (log && !log.children.length) greet();
+  }
 }
 
 /* ---------------- 老式摄像机模式 ---------------- */
@@ -1674,14 +1679,20 @@ async function boot() {
       setTimeout(() => selectExhibit(exParam, { fly: true, openCard: true }), 500);
     }
 
-    if (!CONFIG.demo) {
-      $('intro').classList.remove('hidden');
-    } else {
+    if (CONFIG.demo) {
       $('intro').classList.add('hidden');
       setTimeout(() => {
         greet();
         selectExhibit(exParam || 'tv', { fly: true, openCard: true });
       }, 1000);
+    } else if (params.get('view') === 'pano') {
+      // 兼容旧默认：360 实景优先
+      $('intro').classList.remove('hidden');
+    } else {
+      // 默认进入 3D 漫游（Godot Web 原场景）
+      $('intro').classList.add('hidden');
+      window.__default3dOpened = true;
+      setTimeout(() => openGodot(state.era), 600);
     }
   } catch (err) {
     console.error(err);
