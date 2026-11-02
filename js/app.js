@@ -363,6 +363,25 @@ function applyCamera() {
   }
 }
 
+/* ---------------- Godot Web 3D 漫游 ---------------- */
+function godotURL(scene) {
+  return `godot/index.html?scene=${scene}`;
+}
+function openGodot(scene) {
+  const sid = ['shop', 'office', 'mart'].includes(scene) ? scene : 'office';
+  const frame = $('godot-frame');
+  if (frame) frame.src = godotURL(sid);
+  $('modal-3d').classList.remove('hidden');
+  document.querySelectorAll('[data-gscene]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.gscene === sid);
+  });
+}
+function closeGodot() {
+  $('modal-3d').classList.add('hidden');
+  const frame = $('godot-frame');
+  if (frame) frame.src = 'about:blank';
+}
+
 /* ---------------- 老式摄像机模式 ---------------- */
 function layoutCamcorder() {
   const vw = window.innerWidth;
@@ -1388,6 +1407,9 @@ function bindUI() {
   $('btn-autotour').addEventListener('click', () => startAutonomousTour('5分钟精华'));
   $('btn-tour-stop').addEventListener('click', () => stopTour());
   $('btn-camera').addEventListener('click', () => (state.cam.active ? exitCamcorder() : enterCamcorder()));
+  $('btn-godot3d').addEventListener('click', () => openGodot(state.era));
+  $('godot-close').addEventListener('click', closeGodot);
+  document.querySelectorAll('[data-gscene]').forEach((b) => b.addEventListener('click', () => openGodot(b.dataset.gscene)));
   const modeBtn = $('btn-mode3d');
   if (modeBtn) modeBtn.addEventListener('click', () => setMode(is3D() ? 'pano' : '3d'));
   $('btn-cam-shot').addEventListener('click', capturePhoto);
@@ -1476,6 +1498,7 @@ function bindUI() {
     if (e.target !== m) return;
     m.classList.add('hidden');
     if (m.id === 'modal-sim') closeSimulator();
+    if (m.id === 'modal-3d') closeGodot();
   }));
 
   $('card-close').addEventListener('click', () => { $('exhibit-card').classList.add('hidden'); state.selectedId = null; });

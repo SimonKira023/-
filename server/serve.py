@@ -19,10 +19,12 @@ import re
 import sys
 import urllib.error
 import urllib.request
+import mimetypes
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+mimetypes.add_type("application/wasm", ".wasm")
 EXHIBITS_FILE = ROOT / "data" / "exhibits.json"
 ENV_FILE = ROOT / ".env"
 

@@ -622,3 +622,14 @@ body.camcorder-mode #scene-container canvas { display: block; box-shadow: 0 0 0 
 .lens-readout { font-size: 9.5px; line-height: 1.5; color: #e8eef8; border-top: 1px dashed rgba(255,255,255,.15); padding-top: 5px; }
 .lens-readout b { color: #f0d9a8; }
 .lens-readout .muted { color: rgba(240,235,220,.5); }
+
+
+/* ---------- Godot 3D free-roam modal ---------- */
+.godot-card { width: 96vw; height: 92vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.godot-head { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.godot-head h2 { margin: 0; font-size: 16px; letter-spacing: 1px; }
+.godot-tabs { display: flex; gap: 6px; margin-left: auto; }
+.godot-tabs button { font-size: 11px; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.04); color: #cfdaea; cursor: pointer; font-family: var(--font-ui); }
+.godot-tabs button.active { border-color: rgba(227,180,92,.8); background: rgba(227,180,92,.16); color: #f0d9a8; }
+#godot-frame { flex: 1; width: 100%; border: 0; background: #05070b; }
+.godot-hint { margin: 0; padding: 8px 18px; font-size: 10.5px; color: var(--muted); border-top: 1px solid rgba(255,255,255,.08); }
