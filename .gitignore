@@ -1,0 +1,14 @@
+# 系统 / 工具
+.DS_Store
+Thumbs.db
+*.log
+__pycache__/
+server/__pycache__/
+tools/.cdp-profile/
+
+# 本地环境
+.env
+.env.local
+
+# 大文件（如启用 Git LFS 可取消注释）
+# assets/models/*.glb

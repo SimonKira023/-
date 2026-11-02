@@ -1,0 +1,281 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>数码考古馆 · AI 讲解员</title>
+<link rel="stylesheet" href="css/style.css?v=1987cam" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./libs/three.module.js",
+    "three/addons/": "./libs/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="scene-container"></div>
+  <div id="hotspot-layer"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">考</div>
+      <div class="brand-text">
+        <h1>数码考古馆</h1>
+        <p>从算盘到智能设备 · AI 讲解员</p>
+      </div>
+    </div>
+    <div class="era-tabs" id="era-tabs"></div>
+    <div class="top-actions">
+      <button class="ghost-btn" id="btn-mode3d">3D 自由</button>
+      <button class="ghost-btn" id="btn-camera">🎥 摄像机</button>
+      <button class="ghost-btn" id="btn-autotour">自主巡展</button>
+      <button class="ghost-btn" id="btn-route">参观路线</button>
+      <button class="ghost-btn" id="btn-evolution">数码进化树</button>
+      <button class="icon-btn" id="btn-help" title="帮助">?</button>
+    </div>
+  </header>
+
+  <section class="chat-panel" id="chat-panel">
+    <div class="chat-head">
+      <div class="agent-avatar">奖</div>
+      <div class="chat-title">
+        <strong>AI 讲解员 · 小奖</strong>
+        <span id="agent-status">在线 · 本地知识库</span>
+      </div>
+      <button class="icon-btn small" id="btn-voice" title="语音播报开关">🔊</button>
+    </div>
+    <div class="chat-log" id="chat-log"></div>
+    <div class="chat-chips" id="chat-chips"></div>
+    <form class="chat-input" id="chat-form">
+      <input id="chat-text" type="text" placeholder="问：带我去看传真机 / 自主巡展 / 生成参观报告" autocomplete="off" />
+      <button type="submit">发送</button>
+    </form>
+  </section>
+
+  <article class="exhibit-card hidden" id="exhibit-card">
+    <div class="card-top">
+      <span class="era-badge" id="card-era">1994</span>
+      <button class="icon-btn small" id="card-close">×</button>
+    </div>
+    <h2 id="card-name">展品</h2>
+    <p class="card-tagline" id="card-tagline"></p>
+    <dl class="card-facts">
+      <div><dt>年代</dt><dd id="card-year"></dd></div>
+      <div><dt>当年价格</dt><dd id="card-price"></dd></div>
+    </dl>
+    <p class="card-desc" id="card-desc"></p>
+    <div class="card-actions">
+      <button class="primary-btn" id="card-goto">带我去展品</button>
+      <button class="ghost-btn" id="card-ask">让 AI 讲解</button>
+      <button class="ghost-btn" id="card-sim">使用模拟</button>
+    </div>
+  </article>
+
+  <div class="camcorder hidden" id="camcorder">
+    <div class="cam-frame" id="cam-frame">
+      <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+      <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+      <div class="cam-top">
+        <span class="cam-rec"><i class="rec-dot"></i>REC</span>
+        <span class="cam-sp">SP</span>
+        <span class="cam-right-top"><span id="cam-model">Video8</span><span class="cam-batt">▮▮▮</span></span>
+      </div>
+      <div class="cam-center"><div class="cam-focus"></div></div>
+      <div class="cam-bottom">
+        <div class="cam-left"><div class="cam-zoom" id="cam-zoom">×1.0</div><div class="cam-era" id="cam-era">1987 · 海边便利店</div></div>
+        <div class="cam-right"><div class="cam-date" id="cam-date">1987.08.12</div><div class="cam-hint">拖动看四周 · WASD 移动 · 滚轮变焦 · 空格拍照</div></div>
+      </div>
+      <div class="cam-shots hidden" id="cam-shots"></div>
+      <div class="cam-panel" id="cam-panel-simple">
+        <div class="cp-title">简单模式</div>
+        <label>曝光 <input type="range" id="cam-exposure" min="0.5" max="2.0" step="0.05" value="1" /><b id="cam-exposure-val">1.00</b></label>
+        <label>颗粒 <input type="range" id="cam-grain" min="0" max="0.28" step="0.01" value="0.085" /><b id="cam-grain-val">0.09</b></label>
+        <label>暖色 <input type="range" id="cam-warm" min="-0.2" max="0.35" step="0.01" value="0.13" /><b id="cam-warm-val">0.13</b></label>
+        <div class="cam-panel-hint">也可以让 AI 说「拉近一点 / 调亮一点 / 颗粒少一点」</div>
+        <button class="ghost-btn small" id="btn-expert">专家模式</button>
+      </div>
+
+      <div class="cam-panel expert hidden" id="cam-panel-expert">
+        <div class="cp-title">专家模式 · 手动参数</div>
+        <label>焦距 <input type="range" id="exp-focal" min="24" max="85" step="1" value="35" /><b id="exp-focal-val">35mm</b></label>
+        <label>光圈 <input type="range" id="exp-fstop" min="1.4" max="16" step="0.1" value="4" /><b id="exp-fstop-val">f/4</b></label>
+        <label>快门 <input type="range" id="exp-shutter" min="8" max="1000" step="1" value="60" /><b id="exp-shutter-val">1/60s</b></label>
+        <label>ISO <input type="range" id="exp-iso" min="100" max="6400" step="50" value="400" /><b id="exp-iso-val">400</b></label>
+        <label>白平衡 <input type="range" id="exp-wb" min="2800" max="7500" step="100" value="5600" /><b id="exp-wb-val">5600K</b></label>
+        <label>曝光补偿 <input type="range" id="exp-ev" min="-2" max="2" step="0.1" value="0" /><b id="exp-ev-val">0.0EV</b></label>
+        <label>饱和度 <input type="range" id="exp-sat" min="0.2" max="1.6" step="0.05" value="1" /><b id="exp-sat-val">100%</b></label>
+        <label>对焦 <input type="range" id="exp-focus" min="0" max="100" step="1" value="0" /><b id="exp-focus-val">0</b></label>
+        <div class="cp-warn" id="exp-warn">参数处于正常工作范围</div>
+        <button class="ghost-btn small" id="btn-expert-close">返回简单模式</button>
+      </div>
+
+      <div class="cam-ai">
+        <div class="cp-title">AI 指导 · 小奖</div>
+        <p id="cam-ai-text">当前是 1980 年代 VHS 风格。可以让我按“风格”调参：家庭录像 / 电视新闻 / 低照度夜景 / 电影感 / 黑白。</p>
+        <div class="cam-ai-chips">
+          <button data-style="vhs">家庭录像</button>
+          <button data-style="news">电视新闻</button>
+          <button data-style="night">低照度夜景</button>
+          <button data-style="film">电影感</button>
+          <button data-style="bw">黑白</button>
+          <button data-style="sunny">阳光海滩</button>
+        </div>
+        <form id="cam-ai-form" class="cam-ai-form">
+          <input id="cam-ai-input" type="text" placeholder="我想要 1987 年家庭录像的感觉…" autocomplete="off" />
+          <button type="submit">让 AI 调</button>
+        </form>
+      </div>
+      <div class="cam-controls">
+        <button class="primary-btn" id="btn-cam-shot">📸 拍照</button>
+        <button class="ghost-btn" id="btn-cam-exit">退出摄像机</button>
+      </div>
+    </div>
+    <div class="cam-flash" id="cam-flash"></div>
+  </div>
+
+  <div class="pano-vignette"></div>
+  <div id="move-indicator"></div>
+  <div class="focus-ring" id="focus-ring"></div>
+
+  <div class="tour-banner hidden" id="tour-banner">
+    <div class="tb-left">
+      <span class="tb-dot"></span>
+      <div><strong>小奖正在自主巡展</strong><small id="tour-progress">准备出发</small></div>
+    </div>
+    <button class="ghost-btn" id="btn-tour-stop">停下</button>
+    <div class="tb-bar"><div class="tb-bar-fill" id="tour-bar"></div></div>
+  </div>
+  <div class="hint-bar" id="hint-bar">拖动环视 · WASD/方向键飞行（Shift 加速/QE 升降）· 右键拖拽平移 · 滚轮缩放</div>
+
+  <div class="modal hidden" id="modal-evolution">
+    <div class="modal-card wide">
+      <button class="icon-btn modal-close" data-close="modal-evolution">×</button>
+      <h2>数码进化树</h2>
+      <p class="modal-sub">从"计算工具"到"随身智能"——点一个节点，让讲解员带你去看实物。</p>
+      <div class="evo-track" id="evo-track"></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="modal-route">
+    <div class="modal-card">
+      <button class="icon-btn modal-close" data-close="modal-route">×</button>
+      <h2>选择参观路线</h2>
+      <p class="modal-sub">不知道从哪看起？让 AI 讲解员按主题带你走。</p>
+      <div class="route-list" id="route-list"></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="modal-report">
+    <div class="modal-card">
+      <button class="icon-btn modal-close" data-close="modal-report">×</button>
+      <h2>你的参观报告</h2>
+      <p class="modal-sub">根据这次参观的记忆生成 · 可复制或下载</p>
+      <div id="report-body"></div>
+      <div class="card-actions">
+        <button class="primary-btn" id="btn-report-copy">复制文字</button>
+        <button class="ghost-btn" id="btn-report-download">下载 .txt</button>
+        <button class="ghost-btn" data-close="modal-report">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="modal-sim">
+    <div class="modal-card sim-card">
+      <button class="icon-btn modal-close" data-close="modal-sim">×</button>
+      <h2 id="sim-title">使用模拟</h2>
+      <p class="modal-sub" id="sim-sub"></p>
+      <canvas id="sim-canvas"></canvas>
+      <div class="sim-status" id="sim-status"></div>
+      <div class="sim-actions">
+        <button class="primary-btn" id="sim-action">使用一下</button>
+        <span id="sim-extra"></span>
+      </div>
+      <p class="sim-hint">音效由浏览器实时合成，无外部素材；模拟为交互示意，用于理解器物如何被使用。</p>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="modal-help">
+    <div class="modal-card">
+      <button class="icon-btn modal-close" data-close="modal-help">×</button>
+      <h2>怎么玩</h2>
+      <ul class="help-list">
+        <li><b>看展品</b>：拖动屏幕环视 360°，点击金色光点；或直接说"带我去看传真机"。</li>
+        <li><b>自由视角</b>：WASD / 方向键前后左右移动（Shift 加速），拖动环视，滚轮缩放。</li>
+        <li><b>换场景</b>：顶部切换 1980 五金商店 / 1987 海边便利店 / 1994 办公室。</li>
+        <li><b>使用模拟</b>：展品卡点「使用模拟」，电视开机换台、计算器能算、售货机投币出货，音效实时合成。</li>
+        <li><b>摄像机</b>：顶部「🎥 摄像机」进入 4:3 取景，空格拍照；面板可切「专家模式」调焦距/光圈/快门/ISO/白平衡，旁边 AI 指导可按风格一句话调参。</li>
+        <li><b>比一比</b>：问"算盘和计算器有什么不同"，讲解员会切场景对比。</li>
+        <li><b>AI 讲解员</b>：能听懂人话、会自己转头变焦到展品、高亮并讲解；断网时自动切换本地讲解模式。</li>
+        <li><b>行动轨迹</b>：每条回答上方会显示小奖的行动轨迹，能看到它选了什么工具、切了哪个场景。</li>
+        <li><b>自主巡展</b>：点顶部自主巡展，小奖会自己规划路线、自己走完并讲解；随时点停下打断。</li>
+        <li><b>参观报告</b>：说生成参观报告，它会按你的参观记忆生成带时间线的报告，可复制/下载。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="overlay" id="loading">
+    <div class="loading-inner">
+      <div class="loading-logo">考</div>
+      <h2 id="loading-title">正在打开 360° 实景展厅…</h2>
+      <div class="bar"><div class="bar-fill" id="loading-bar"></div></div>
+      <p id="loading-tip">正在加载 Godot 原场景渲染的全景图，保留游戏原始光影</p>
+    </div>
+  </div>
+
+  <div class="overlay intro" id="intro">
+    <div class="intro-card">
+      <p class="intro-kicker">2026 软工实践周 · 主题：数码</p>
+      <h2>数码考古馆</h2>
+      <p class="intro-sub">一间会自己带路的 3D 数字博物馆</p>
+      <p class="intro-desc">从 1980 年的街角五金商店，到 1994 年的东京办公室，再到海边小镇的便利店——三个 360° 实景展厅，全部由游戏原始场景实时渲染，保留原有的光影与色调。AI 讲解员小奖会听懂你的话，自己转头、变焦、带你走到展品前讲解；也可以打开「老式摄像机」，在场景里自由移动取景，拍下 1980/1987/1994 年的画面。</p>
+      <div class="intro-feats">
+        <span>🏛 三个场景 · 15 件展品</span>
+        <span>🤖 Agent 转头带路</span>
+        <span>🎥 老式摄像机拍照</span>
+        <span>🌳 数码进化树</span>
+        <span>🧭 自主巡展 · 参观报告</span>
+      </div>
+      <button class="primary-btn big" id="btn-start">开始参观</button>
+      <p class="intro-note">提示：拖动屏幕环视；也可以直接问右下角的小奖，比如"带我去看 CRT 电脑"。</p>
+    </div>
+  </div>
+
+  <div class="error-toast hidden" id="error-toast"></div>
+</div>
+
+<script>
+  window.MUSEUM_CONFIG = { allowLLM: true, demo: new URLSearchParams(location.search).get('demo') === '1' };
+  window.addEventListener('error', function (e) {
+    var box = document.getElementById('error-toast');
+    if (!box) return;
+    box.classList.remove('hidden');
+    box.textContent = '页面错误：' + (e.message || e.error || 'unknown');
+  });
+</script>
+<script>
+(function () {
+  var isFile = location.protocol === 'file:';
+  var gl = null;
+  try {
+    var c = document.createElement('canvas');
+    gl = c.getContext('webgl2') || c.getContext('webgl');
+  } catch (e) {}
+  if (!isFile && gl) return;
+  window.addEventListener('DOMContentLoaded', function () {
+    var tip = document.createElement('div');
+    tip.className = 'boot-help';
+    tip.innerHTML = isFile
+      ? '<h2>请用 start.bat 启动</h2><p>浏览器不允许直接双击打开本地文件（file://）。<br>请回到项目文件夹，双击 <b>start.bat</b>，它会自动启动服务并打开 <b>http://127.0.0.1:8787</b></p>'
+      : '<h2>当前浏览器不支持 WebGL</h2><p>请改用 <b>Chrome</b> 或 <b>Edge</b> 打开 <b>http://127.0.0.1:8787</b>，<br>并在浏览器设置里开启「硬件加速 / 使用图形加速」后重试。</p>';
+    document.body.appendChild(tip);
+  });
+})();
+</script>
+<script type="module" src="js/app.js?v=1987cam"></script>
+</body>
+</html>
