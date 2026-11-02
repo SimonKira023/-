@@ -16,7 +16,7 @@
 </head>
 <body>
 <div id="app">
-  <div id="scene-container"></div>
+  <div id="scene-container"><iframe id="godot-base" title="Godot 3D 场景" allow="fullscreen; pointer-lock"></iframe></div>
   <div id="hotspot-layer"></div>
 
   <header class="topbar">
@@ -191,22 +191,6 @@
         <button class="ghost-btn" id="btn-report-download">下载 .txt</button>
         <button class="ghost-btn" data-close="modal-report">关闭</button>
       </div>
-    </div>
-  </div>
-
-  <div class="modal hidden" id="modal-3d">
-    <div class="modal-card godot-card">
-      <div class="godot-head">
-        <h2>3D 自由漫游 · Godot 原场景</h2>
-        <div class="godot-tabs">
-          <button data-gscene="office">1994 办公室</button>
-          <button data-gscene="shop">1980 五金商店</button>
-          <button data-gscene="mart">1987 海边便利店</button>
-        </div>
-        <button class="icon-btn" id="godot-close">×</button>
-      </div>
-      <iframe id="godot-frame" title="Godot 3D 漫游" allow="fullscreen; pointer-lock"></iframe>
-      <p class="godot-hint">点击画面进入：WASD 移动 · 鼠标环视 · Shift 加速 · Q/E 升降 · Esc 释放鼠标（和游戏里同一套 shader 光影）</p>
     </div>
   </div>
 

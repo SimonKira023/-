@@ -114,7 +114,12 @@
       "pitch": -3.96,
       "zoom": 26,
       "sim": "tv",
-      "use_label": "开机换台"
+      "use_label": "开机换台",
+      "pos3d": [
+        -1.9,
+        0.168,
+        0.9
+      ]
     },
     {
       "id": "radio",
@@ -136,7 +141,12 @@
       "pitch": -6.05,
       "zoom": 26,
       "sim": "radio",
-      "use_label": "调台收听"
+      "use_label": "调台收听",
+      "pos3d": [
+        1.98,
+        0.777,
+        1.56
+      ]
     },
     {
       "id": "abacus",
@@ -158,7 +168,12 @@
       "pitch": -6.17,
       "zoom": 24,
       "sim": "abacus",
-      "use_label": "拨珠算账"
+      "use_label": "拨珠算账",
+      "pos3d": [
+        1.36,
+        0.777,
+        1.56
+      ]
     },
     {
       "id": "payphone",
@@ -181,7 +196,12 @@
       "pitch": -2.16,
       "zoom": 22,
       "sim": "payphone",
-      "use_label": "投币拨号"
+      "use_label": "投币拨号",
+      "pos3d": [
+        5.78,
+        0.05,
+        3.12
+      ]
     },
     {
       "id": "fan",
@@ -204,7 +224,12 @@
       "pitch": -4.12,
       "zoom": 24,
       "sim": "fan",
-      "use_label": "开风扇"
+      "use_label": "开风扇",
+      "pos3d": [
+        2.38,
+        0.777,
+        -0.28
+      ]
     },
     {
       "id": "crt",
@@ -227,7 +252,12 @@
       "pitch": 4.75,
       "zoom": 26,
       "sim": "crt",
-      "use_label": "开机"
+      "use_label": "开机",
+      "pos3d": [
+        1.58,
+        0.925,
+        0.89
+      ]
     },
     {
       "id": "floppy",
@@ -250,7 +280,12 @@
       "pitch": 4.13,
       "zoom": 22,
       "sim": "floppy",
-      "use_label": "插入软盘"
+      "use_label": "插入软盘",
+      "pos3d": [
+        -2.06,
+        0.335,
+        -0.206
+      ]
     },
     {
       "id": "fax",
@@ -273,7 +308,12 @@
       "pitch": 3.55,
       "zoom": 24,
       "sim": "fax",
-      "use_label": "发送传真"
+      "use_label": "发送传真",
+      "pos3d": [
+        3.28,
+        0.75,
+        -2.28
+      ]
     },
     {
       "id": "calculator",
@@ -296,7 +336,12 @@
       "pitch": 2.64,
       "zoom": 20,
       "sim": "calculator",
-      "use_label": "按计算器"
+      "use_label": "按计算器",
+      "pos3d": [
+        0.76,
+        0.72,
+        1.29
+      ]
     },
     {
       "id": "clock",
@@ -318,7 +363,12 @@
       "pitch": 15.1,
       "zoom": 20,
       "sim": "clock",
-      "use_label": "看时间"
+      "use_label": "看时间",
+      "pos3d": [
+        -2.2,
+        2.26,
+        -3.08
+      ]
     },
     {
       "id": "vending",
@@ -341,7 +391,12 @@
       "pitch": -1.59,
       "zoom": 26,
       "sim": "vending",
-      "use_label": "投币买饮料"
+      "use_label": "投币买饮料",
+      "pos3d": [
+        -4.55,
+        1.15,
+        2.35
+      ]
     },
     {
       "id": "checkout",
@@ -364,7 +419,12 @@
       "pitch": 0.4,
       "zoom": 26,
       "sim": "checkout",
-      "use_label": "扫码结账"
+      "use_label": "扫码结账",
+      "pos3d": [
+        1.35,
+        1.25,
+        -0.15
+      ]
     },
     {
       "id": "cooler",
@@ -387,7 +447,12 @@
       "pitch": 1.77,
       "zoom": 24,
       "sim": "cooler",
-      "use_label": "打开冷柜"
+      "use_label": "打开冷柜",
+      "pos3d": [
+        -1.15,
+        1.3,
+        -4.05
+      ]
     },
     {
       "id": "entrance",
@@ -410,7 +475,12 @@
       "pitch": -0.9,
       "zoom": 24,
       "sim": "entrance",
-      "use_label": "走近自动门"
+      "use_label": "走近自动门",
+      "pos3d": [
+        0.15,
+        1.25,
+        2.1
+      ]
     },
     {
       "id": "lighthouse",
@@ -433,7 +503,12 @@
       "pitch": 2.49,
       "zoom": 16,
       "sim": "lighthouse",
-      "use_label": "点亮灯塔"
+      "use_label": "点亮灯塔",
+      "pos3d": [
+        8.15,
+        1.45,
+        -7.0
+      ]
     }
   ],
   "evolution": [

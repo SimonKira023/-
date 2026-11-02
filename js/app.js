@@ -28,6 +28,7 @@ const state = {
   memory: { visited: [], questions: [], startedAt: Date.now(), lastVisit: 0 },
   tour: null,
   mode: 'pano',
+  view3d: false,
   glb: null,
   three: { speed: 4, range: 12, size: 10 },
   free: { keys: new Set(), pos: new THREE.Vector3(), vel: new THREE.Vector3(), moving: 0 },
@@ -363,28 +364,168 @@ function applyCamera() {
   }
 }
 
-/* ---------------- Godot Web 3D 漫游 ---------------- */
+/* ---------------- Godot Web 3D 漫游（默认主视图） ---------------- */
 function godotURL(scene) {
   return `godot/index.html?scene=${scene}`;
 }
-function openGodot(scene) {
-  const sid = ['shop', 'office', 'mart'].includes(scene) ? scene : 'office';
-  const frame = $('godot-frame');
-  if (frame) frame.src = godotURL(sid);
-  $('modal-3d').classList.remove('hidden');
-  document.querySelectorAll('[data-gscene]').forEach((b) => {
-    b.classList.toggle('active', b.dataset.gscene === sid);
+function isView3D() { return !!state.view3d; }
+
+function setView3D(on, scene) {
+  state.view3d = !!on;
+  document.body.classList.toggle('view-3d', state.view3d);
+  const frame = $('godot-base');
+  if (state.view3d) {
+    const sid = ['shop', 'office', 'mart'].includes(scene) ? scene : state.era;
+    state.era = sid;
+    if (frame && !frame.src.includes(`scene=${sid}`)) frame.src = godotURL(sid);
+    buildMarkers3D();
+    if (state.cam.active) layoutCamcorder();
+  } else {
+    if (frame) frame.src = 'about:blank';
+    hotspotLayer.style.display = '';
+    clearMarkers3D();
+    buildHotspots();
+    loadEra(state.era, { force: true, silent: true });
+  }
+  updateModeButton();
+  updateCamLabels();
+}
+function openGodot(scene) { setView3D(true, scene); }
+function closeGodot() { setView3D(false); }
+
+/* ---- 3D 展品标记（把 pos3d 投影到屏幕） ---- */
+const V3 = { cam: null, markers: [] };
+function clearMarkers3D() {
+  V3.markers.forEach((m) => m.el.remove());
+  V3.markers = [];
+}
+function buildMarkers3D() {
+  clearMarkers3D();
+  if (!state.view3d || !state.data) return;
+  const layer = $('hotspot-layer');
+  const exs = (state.data.exhibits || []).filter((e) => e.scene === state.era && e.pos3d);
+  exs.forEach((ex) => {
+    const el = document.createElement('button');
+    el.className = 'hotspot-3d';
+    el.innerHTML = `<i>${ex.name.slice(0, 1)}</i><span>${ex.name}</span>`;
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      selectExhibit(ex.id, { fly: false, openCard: true });
+    });
+    layer.appendChild(el);
+    V3.markers.push({ el, pos: ex.pos3d });
+  });
+  updateMarkers3D();
+}
+function updateMarkers3D() {
+  if (!state.view3d || !V3.cam || !V3.markers.length) return;
+  const c = V3.cam;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const aspect = W / Math.max(1, H);
+  const f = 1 / Math.tan((c.fov * Math.PI) / 360);
+  V3.markers.forEach(({ el, pos }) => {
+    const dx = pos[0] - c.p[0];
+    const dy = pos[1] - c.p[1];
+    const dz = pos[2] - c.p[2];
+    const x = dx * c.x[0] + dy * c.x[1] + dz * c.x[2];
+    const y = dx * c.y[0] + dy * c.y[1] + dz * c.y[2];
+    const z = -(dx * c.z[0] + dy * c.z[1] + dz * c.z[2]);
+    if (z <= 0.25) { el.style.display = 'none'; return; }
+    const sx = (x / (z * f * aspect)) * 0.5 + 0.5;
+    const sy = 0.5 - (y / (z * f)) * 0.5;
+    if (sx < -0.08 || sx > 1.08 || sy < -0.08 || sy > 1.08) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.style.left = `${(sx * W).toFixed(1)}px`;
+    el.style.top = `${(sy * H).toFixed(1)}px`;
+    el.style.opacity = clamp(1.35 - z / 28, 0.4, 1).toFixed(2);
   });
 }
-function closeGodot() {
-  $('modal-3d').classList.add('hidden');
-  const frame = $('godot-frame');
-  if (frame) frame.src = 'about:blank';
-  if (window.__default3dOpened) {
-    window.__default3dOpened = false;
-    const log = $('chat-log');
-    if (log && !log.children.length) greet();
+window.__museum3dCamera = (arr) => {
+  if (!arr || arr.length < 13) return;
+  V3.cam = {
+    p: arr.slice(0, 3), x: arr.slice(3, 6), y: arr.slice(6, 9), z: arr.slice(9, 12), fov: arr[12],
+  };
+  updateMarkers3D();
+};
+window.__museum3dReady = (sid) => {
+  if (!state.view3d || sid !== state.era) return;
+  buildMarkers3D();
+  const pending = window.__pendingFocus3D;
+  if (pending && window.__pendingFocusEra === sid) {
+    window.__pendingFocus3D = null;
+    window.__pendingFocusEra = null;
+    const frame = $('godot-base');
+    const win = frame && frame.contentWindow;
+    if (win && typeof win.museumFocus === 'function') {
+      try { win.museumFocus(pending[0], pending[1], pending[2]); } catch (e) {}
+    }
   }
+};
+window.__museum3dShot = (dataUrl) => apply3DPhoto(dataUrl);
+window.__museum3dLog = (m) => { (window.__museum3dLogs || (window.__museum3dLogs = [])).push(String(m)); };
+
+function focus3D(ex) {
+  if (!ex || !ex.pos3d) return;
+  const frame = $('godot-base');
+  const win = frame && frame.contentWindow;
+  if (win && typeof win.museumFocus === 'function') {
+    try { win.museumFocus(ex.pos3d[0], ex.pos3d[1], ex.pos3d[2]); } catch (e) {}
+  }
+}
+
+function capture3DPhoto() {
+  const frame = $('godot-base');
+  const win = frame && frame.contentWindow;
+  if (win && typeof win.museumCapture === 'function') {
+    flashShutter();
+    toast('正在冲洗照片…');
+    try { win.museumCapture(); } catch (e) { toast('3D 拍照失败'); }
+  } else {
+    toast('3D 场景还没准备好，稍等一秒再拍');
+  }
+}
+
+function apply3DPhoto(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    const W = 1440;
+    const H = 1080;
+    const out = document.createElement('canvas');
+    out.width = W;
+    out.height = H;
+    const ctx = out.getContext('2d');
+    // 从 16:9 截图中裁 4:3，再套 VHS 质感
+    const sw = img.width;
+    const sh = (img.width * 3) / 4;
+    const sy0 = Math.max(0, (img.height - sh) / 2);
+    ctx.filter = 'saturate(0.85) contrast(1.07) sepia(0.16) brightness(0.97)';
+    ctx.drawImage(img, 0, sy0, sw, sh, 0, 0, W, H);
+    ctx.filter = 'none';
+    ctx.fillStyle = 'rgba(0,0,0,.16)';
+    for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+    drawCamOverlay(ctx, W, H);
+    const idx = state.cam.shots.length + 1;
+    const date = (eraMeta().date || '1987.08.12').replace(/\./g, '-');
+    const ts = new Date();
+    const hhmm = `${String(ts.getHours()).padStart(2, '0')}${String(ts.getMinutes()).padStart(2, '0')}`;
+    const name = `数码考古馆_${date}_${hhmm}_${String(idx).padStart(2, '0')}.png`;
+    out.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      addCamThumb(url, name);
+      state.cam.shots.push({ url, name, era: state.era, ts: Date.now() });
+      state.memory.photos = (state.memory.photos || 0) + 1;
+      saveMemory();
+      setTimeout(() => { if (!state.cam.shots.find((x) => x.url === url && x.name === name)) URL.revokeObjectURL(url); }, 60000);
+    }, 'image/png');
+    toast(`已拍照 · 胶卷 ${idx} 张`);
+  };
+  img.src = dataUrl;
 }
 
 /* ---------------- 老式摄像机模式 ---------------- */
@@ -655,6 +796,7 @@ function flashShutter() {
 
 function capturePhoto() {
   if (!state.cam.active) return;
+  if (state.view3d) { capture3DPhoto(); return; }
   camUniforms.time.value = performance.now() / 1000;
   renderer.setRenderTarget(camRT);
   renderer.render(scene, camera);
@@ -788,6 +930,15 @@ function setLoading(show, title, tip, progress) {
 }
 
 function loadEra(era, opts = {}) {
+  if (state.view3d) {
+    state.era = era;
+    const frame = $('godot-base');
+    if (frame && !frame.src.includes(`scene=${era}`)) frame.src = godotURL(era);
+    renderEraTabs();
+    buildMarkers3D();
+    updateCamLabels();
+    return Promise.resolve();
+  }
   if (is3D()) {
     state.era = era;
     renderEraTabs();
@@ -910,11 +1061,11 @@ function flyToExhibit(ex, opts = {}) {
 }
 
 function updateModeButton() {
-  const btn = $('btn-mode3d');
-  if (btn) btn.textContent = is3D() ? '实景 360°' : '3D 自由';
+  const b = $('btn-godot3d');
+  if (b) b.textContent = state.view3d ? '360 实景' : '3D 漫游';
   const hint = $('hint-bar');
-  if (hint) hint.textContent = is3D()
-    ? '3D 自由模式：WASD/QE 飞行 · Shift 加速 · 拖动环视 · 右键平移 · 滚轮缩放 · 顶部可切回实景'
+  if (hint) hint.textContent = state.view3d
+    ? '3D 漫游：点击画面后 WASD 走动 · 鼠标环视 · Shift 加速 · Q/E 升降 · Esc 释放鼠标 · 点金色光点看展品'
     : '拖动环视 · WASD/方向键飞行（Shift 加速/QE 升降）· 右键拖拽平移 · 滚轮缩放';
 }
 
@@ -958,6 +1109,21 @@ async function setMode(mode) {
 async function selectExhibit(id, opts = {}) {
   const ex = state.agent.byId.get(id);
   if (!ex) return;
+  if (state.view3d) {
+    if (ex.scene !== state.era) {
+      window.__pendingFocus3D = ex.pos3d || null;
+      window.__pendingFocusEra = ex.scene;
+      setView3D(true, ex.scene);
+    } else {
+      focus3D(ex);
+    }
+    state.selectedId = id;
+    try { localStorage.setItem('museum-last-exhibit', id); } catch (e) {}
+    recordVisit(ex);
+    if (opts.openCard !== false) renderCard(ex);
+    showFocusRing();
+    return;
+  }
   if (is3D()) await setMode('pano');
   if (ex.scene !== state.era) {
     await loadEra(ex.scene, { silent: true });
@@ -1412,9 +1578,7 @@ function bindUI() {
   $('btn-autotour').addEventListener('click', () => startAutonomousTour('5分钟精华'));
   $('btn-tour-stop').addEventListener('click', () => stopTour());
   $('btn-camera').addEventListener('click', () => (state.cam.active ? exitCamcorder() : enterCamcorder()));
-  $('btn-godot3d').addEventListener('click', () => openGodot(state.era));
-  $('godot-close').addEventListener('click', closeGodot);
-  document.querySelectorAll('[data-gscene]').forEach((b) => b.addEventListener('click', () => openGodot(b.dataset.gscene)));
+  $('btn-godot3d').addEventListener('click', () => setView3D(!state.view3d, state.era));
   const modeBtn = $('btn-mode3d');
   if (modeBtn) modeBtn.addEventListener('click', () => setMode(is3D() ? 'pano' : '3d'));
   $('btn-cam-shot').addEventListener('click', capturePhoto);
@@ -1648,7 +1812,7 @@ function greet() {
   const recent = (state.memory.visited || []).slice(-1)[0];
   const extra = recent ? `\n上次你看到过 **${recent.name}**，这次可以接着逛。` : '';
   addMsg('agent', fmtReply(
-    `欢迎来到 **数码考古馆**，我是讲解员**小奖**。\n当前是 **${label}**。你可以拖动屏幕环视 360°，点金色光点看展品，或直接说“带我去看传真机”。${extra}\n我还能**自主巡展**（自己规划路线带你走完），也能按你的参观记录**生成报告**。`
+    `欢迎来到 **数码考古馆**，我是讲解员**小奖**。\n当前是 **${label}**。你可以按 **WASD 自由走动**（点击画面后鼠标环视），点金色光点看展品，或直接说“带我去看传真机”。${extra}\n我还能**自主巡展**（自己规划路线带你走完），也能按你的参观记录**生成报告**。`
   ));
   renderChips(['带我去看传真机', '自主巡展', '生成参观报告', '打开摄像机']);
 }
@@ -1689,10 +1853,12 @@ async function boot() {
       // 兼容旧默认：360 实景优先
       $('intro').classList.remove('hidden');
     } else {
-      // 默认进入 3D 漫游（Godot Web 原场景）
+      // 默认就是 3D 主视图（Godot Web 原场景），所有操作直接在 3D 上做
       $('intro').classList.add('hidden');
-      window.__default3dOpened = true;
-      setTimeout(() => openGodot(state.era), 600);
+      setTimeout(() => {
+        setView3D(true, state.era);
+        if (!$('chat-log').children.length) greet();
+      }, 500);
     }
   } catch (err) {
     console.error(err);
@@ -1733,7 +1899,7 @@ function tick() {
     if (is3D()) applyCamera3D(); else applyCamera();
     const ind = $('move-indicator');
     if (ind) ind.textContent = state.free.moving > 0.4 ? '飞行中' : '';
-    hotspotLayer.style.display = is3D() ? 'none' : '';
+    if (!state.view3d) hotspotLayer.style.display = is3D() ? 'none' : '';
   }
   if (state.cam.active) {
     camUniforms.time.value = now / 1000;
@@ -1744,7 +1910,12 @@ function tick() {
   } else {
     renderer.render(scene, camera);
   }
-  updateHotspots();
+  if (state.view3d) {
+    updateMarkers3D();
+    hotspotLayer.style.display = '';
+  } else {
+    updateHotspots();
+  }
 }
 
 boot();
