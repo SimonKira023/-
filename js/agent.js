@@ -158,6 +158,15 @@ export function createAgent(data) {
       }, text, ctx);
     }
 
+    // 关闭 AR / 退出扫描
+    if (has(text, ['关闭ar', '关闭 arch', '退出ar', '退出扫描', '关掉扫描', '断开ar', '断开链接', '退出arch-os'])) {
+      return withTrace({
+        reply: '已断开 ARCH-OS 链路，回到普通 3D 漫游。需要再扫描随时按 H。',
+        actions: [{ type: 'closeHack' }],
+        chips: ['打开 AR 扫描', '带我去看传真机', '自主巡展'],
+      }, text, ctx);
+    }
+
     // ARCH-OS / 看门狗：扫描、入侵、批量接管
     if (has(text, ['扫描', '入侵', '黑入', '接管', '接入', '破解', '看门狗', 'arch-os', 'archos', 'ctos', '所有设备', '全部设备', '全部接入'])) {
       const all = has(text, ['所有', '全部', '整个展厅', '本展厅', '全馆', '一台不落']);
@@ -473,6 +482,7 @@ export function createAgent(data) {
         '风格', '家庭录像', '电视新闻', '夜景', '电影感', '黑白', '阳光', '复古', '胶片', '氛围', '感觉',
         '拍远', '长焦', '增距', '玻璃', '太模糊', '数码变焦', '看不清',
         '扫描', '入侵', '黑入', '接管', '接入', '破解', '看门狗', 'arch-os', 'archos',
+        '关闭ar', '退出ar', '退出扫描', '断开ar',
         '所有设备', '全部设备', '全部接入',
         '使用模拟', '模拟', '怎么用', '用一下', '用一次', '试一下', '演示一下', '怎么操作'])) {
         const local = localRespond(text, ctx);

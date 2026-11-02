@@ -600,9 +600,21 @@ function scanExhibit(ex, opts = {}) {
     setAgentState('扫描完成');
   }, 1300);
 }
-function closeHackScan() {
+function exitHackMode() {
+  state.hack.active = false;
+  document.body.classList.remove('hack-mode');
+  const btn = $('btn-hack');
+  if (btn) btn.classList.remove('active');
+  const panel = $('hack-scan');
+  if (panel) panel.classList.add('hidden');
+  state.hack.current = null;
+  buildMarkers3D();
+  setAgentState('监听中');
+}
+function closeHackScan(exit = false) {
   $('hack-scan').classList.add('hidden');
   state.hack.current = null;
+  if (exit && state.hack.active) exitHackMode();
 }
 function hackDevice(ex, openSim = true, quiet = false) {
   if (!ex) return;
@@ -1479,6 +1491,9 @@ async function execActions(actions, traceEl) {
     } else if (a.type === 'hackAll') {
       await hackAllInEra(a.era || state.era);
       await sleep(200);
+    } else if (a.type === 'closeHack') {
+      closeHackScan(true);
+      await sleep(120);
     } else if (a.type === 'openHack') {
       setHackMode(true);
       await sleep(200);
@@ -1738,8 +1753,8 @@ function bindUI() {
   $('btn-camera').addEventListener('click', () => (state.cam.active ? exitCamcorder() : enterCamcorder()));
   $('btn-godot3d').addEventListener('click', () => setView3D(!state.view3d, state.era));
   $('btn-hack').addEventListener('click', () => setHackMode(!state.hack.active));
-  $('hack-close').addEventListener('click', () => closeHackScan());
-  $('hack-done').addEventListener('click', () => closeHackScan());
+  $('hack-close').addEventListener('click', () => closeHackScan(true));
+  $('hack-done').addEventListener('click', () => closeHackScan(true));
   $('hack-run').addEventListener('click', runHack);
   const modeBtn = $('btn-mode3d');
   if (modeBtn) modeBtn.addEventListener('click', () => setMode(is3D() ? 'pano' : '3d'));
@@ -1944,6 +1959,7 @@ function bindUI() {
       }
       if (k === 'shift') state.free.keys.add('shift');
     }
+    if (e.key === 'Escape' && state.hack.active) { e.preventDefault(); closeHackScan(true); return; }
     if (e.key === 'h' || e.key === 'H') { setHackMode(!state.hack.active); return; }
     if (e.key === 'r' || e.key === 'R') { state.free.pos.set(0, 0, 0); state.free.vel.set(0, 0, 0); if (state.cam.active) { state.cam.pos.set(0, 0, 0); state.cam.vel.set(0, 0, 0); } setView(0, 0, 72, 500); toast('已回到初始机位'); }
     if (e.key === 'v' || e.key === 'V') openEvolution();
