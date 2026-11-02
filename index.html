@@ -17,6 +17,27 @@
 <body>
 <div id="app">
   <div id="scene-container"><iframe id="godot-base" title="Godot 3D 场景" allow="fullscreen; pointer-lock"></iframe></div>
+  <div id="hack-fx"></div>
+  <div id="ctos-hud" class="hidden">
+    <div class="ctos-row"><span class="ctos-dot"></span>ARCH-OS // 数码考古馆</div>
+    <div class="ctos-row ctos-sub">AGENT <b>小奖</b> · <span id="agent-state">监听中</span></div>
+    <div class="ctos-row ctos-signal">信号 <i></i><i></i><i></i><i></i> · <span id="ctos-visited">0</span> 件已接入</div>
+  </div>
+
+  <div id="hack-scan" class="hidden">
+    <div class="hack-card">
+      <div class="hack-head"><span>ARCH-OS // 设备接入</span><button id="hack-close">×</button></div>
+      <h3 id="hack-name">—</h3>
+      <div class="hack-meta" id="hack-meta"></div>
+      <div class="hack-bar"><i id="hack-bar-fill"></i></div>
+      <pre class="hack-data" id="hack-data"></pre>
+      <div class="hack-actions">
+        <button class="primary-btn" id="hack-run">入侵设备</button>
+        <button class="ghost-btn" id="hack-done">断开</button>
+      </div>
+    </div>
+  </div>
+
   <div id="hotspot-layer"></div>
 
   <header class="topbar">
@@ -30,6 +51,7 @@
     <div class="era-tabs" id="era-tabs"></div>
     <div class="top-actions">
       <button class="ghost-btn" id="btn-godot3d">3D 漫游</button>
+      <button class="ghost-btn" id="btn-hack">AR 扫描</button>
       <button class="ghost-btn" id="btn-camera">🎥 摄像机</button>
       <button class="ghost-btn" id="btn-autotour">自主巡展</button>
       <button class="ghost-btn" id="btn-route">参观路线</button>

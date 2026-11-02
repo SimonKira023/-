@@ -29,6 +29,7 @@ const state = {
   tour: null,
   mode: 'pano',
   view3d: false,
+  hack: { active: false, done: [], current: null },
   glb: null,
   three: { speed: 4, range: 12, size: 10 },
   free: { keys: new Set(), pos: new THREE.Vector3(), vel: new THREE.Vector3(), moving: 0 },
@@ -373,6 +374,8 @@ function isView3D() { return !!state.view3d; }
 function setView3D(on, scene) {
   state.view3d = !!on;
   document.body.classList.toggle('view-3d', state.view3d);
+  const topHud = $('ctos-hud');
+  if (topHud) topHud.classList.toggle('hidden', !state.view3d);
   const frame = $('godot-base');
   if (state.view3d) {
     const sid = ['shop', 'office', 'mart'].includes(scene) ? scene : state.era;
@@ -410,7 +413,8 @@ function buildMarkers3D() {
     el.innerHTML = `<i>${ex.name.slice(0, 1)}</i><span>${ex.name}</span>`;
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      selectExhibit(ex.id, { fly: false, openCard: true });
+      if (state.hack.active) scanExhibit(ex);
+      else selectExhibit(ex.id, { fly: false, openCard: true });
     });
     layer.appendChild(el);
     V3.markers.push({ el, pos: ex.pos3d });
@@ -526,6 +530,142 @@ function apply3DPhoto(dataUrl) {
     toast(`已拍照 · 胶卷 ${idx} 张`);
   };
   img.src = dataUrl;
+}
+
+/* ---------------- Watch Dogs / ARCH-OS AR 扫描 ---------------- */
+function hashStr(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return Math.abs(h);
+}
+function setAgentState(txt) {
+  const el = $('agent-state');
+  if (el) el.textContent = txt;
+}
+function updateCtos() {
+  const el = $('ctos-visited');
+  if (el) el.textContent = String(state.hack.done.length);
+}
+function agentSay(text, chips) {
+  addMsg('agent', fmtReply(text));
+  if (chips) renderChips(chips);
+}
+function setHackMode(on) {
+  if (on && !state.view3d) setView3D(true, state.era);
+  state.hack.active = !!on;
+  document.body.classList.toggle('hack-mode', state.hack.active);
+  const hud = $('ctos-hud');
+  if (hud) hud.classList.toggle('hidden', !state.view3d);
+  const btn = $('btn-hack');
+  if (btn) btn.classList.toggle('active', state.hack.active);
+  buildMarkers3D();
+  if (state.hack.active) {
+    updateCtos();
+    agentSay('ARCH-OS 链路已接入。场景里的设备现在都可以扫描——点金色光点读取档案，再决定要不要**入侵**。', ['扫描电视', '入侵收银台', '关闭 AR']);
+  } else {
+    closeHackScan();
+  }
+}
+function dossierData(ex) {
+  const seed = hashStr(ex.id + ex.scene);
+  const dev = `EX-${(seed % 9000 + 1000)}`;
+  const fw = `v${(seed % 9) + 1}.${(seed % 7) + 1}.${(seed % 5) + 1}`;
+  const node = `ARCHOS-${ex.scene.toUpperCase()}-${(seed % 99 + 1).toString().padStart(2, '0')}`;
+  const residue = 40 + (seed % 56);
+  return { dev, fw, node, residue };
+}
+function scanExhibit(ex, opts = {}) {
+  if (!ex) return;
+  if (!state.hack.active) setHackMode(true);
+  state.hack.current = ex;
+  const meta = eraMeta(ex.scene);
+  const d = dossierData(ex);
+  $('hack-name').textContent = ex.name;
+  $('hack-meta').innerHTML = `年代 <b>${ex.year}</b> · ${meta.label}<br>类型 ${ex.category} · 接入点 ${d.node}`;
+  $('hack-data').innerHTML = '正在读取设备指纹…';
+  $('hack-scan').classList.remove('hidden');
+  const fill = $('hack-bar-fill');
+  fill.style.width = '0%';
+  requestAnimationFrame(() => { fill.style.width = '100%'; });
+  setTimeout(() => {
+    $('hack-data').innerHTML = `设备 ID   <b>${d.dev}</b>
+固件版本  <b>${d.fw}</b>
+数据残留  <b>${d.residue}%</b>
+最早上线  <b>${ex.year}</b>
+当年价格  <b>${ex.price}</b>
+备注      ${ex.tagline}`;
+    if (opts.agent !== false) {
+      agentSay(`扫描完成：**${ex.name}**（${ex.year}）。这台设备还留着一层 ${d.residue}% 的数据残留——要试着**接入**它吗？`, ['入侵设备', '看它的用法', '扫描下一台']);
+    }
+    setAgentState('扫描完成');
+  }, 1300);
+}
+function closeHackScan() {
+  $('hack-scan').classList.add('hidden');
+  state.hack.current = null;
+}
+function hackDevice(ex, openSim = true, quiet = false) {
+  if (!ex) return;
+  if (!state.hack.done.includes(ex.id)) state.hack.done = [...state.hack.done, ex.id];
+  updateCtos();
+  const fx = $('hack-fx');
+  if (fx) {
+    fx.classList.add('granted');
+    setTimeout(() => fx.classList.remove('granted'), 900);
+  }
+  if (!quiet) {
+    agentSay(`**ACCESS GRANTED** — 已接管 **${ex.name}**。${ex.use_label ? `现在可以「${ex.use_label}」。` : '这台设备的控制权已经在你手里。'}`);
+  }
+  if (ex.sim && openSim) {
+    setTimeout(() => openSimulator(ex, { eraLabel: eraMeta(ex.scene).label }), 260);
+  } else {
+    toast(`入侵成功 · ${ex.name} 已接管`);
+  }
+  setAgentState('设备已接管');
+}
+function runHack() {
+  if (!state.hack.current) return;
+  hackDevice(state.hack.current, true, false);
+}
+
+async function hackAllInEra(era = state.era) {
+  if (!state.view3d) setView3D(true, era);
+  setHackMode(true);
+  const list = (state.data.exhibits || []).filter((e) => e.scene === era && e.pos3d);
+  if (!list.length) return;
+  agentSay(`任务收到：接入 **${eraMeta(era).label}** 的全部 ${list.length} 台设备。我自己按顺序扫描、接管，你可以随时打断我。`);
+  setAgentState('自主执行 · 批量接入');
+  for (let i = 0; i < list.length; i++) {
+    const ex = list[i];
+    if (ex.scene === state.era) {
+      selectExhibit(ex.id, { fly: false, openCard: false });
+      await new Promise((r) => setTimeout(r, 420));
+    }
+    scanExhibit(ex, { agent: false });
+    await new Promise((r) => setTimeout(r, 1400));
+    hackDevice(ex, false, true);
+    agentSay(`[${i + 1}/${list.length}] **${ex.name}** 已接管。`);
+    await new Promise((r) => setTimeout(r, 260));
+  }
+  setAgentState('监听中');
+  agentSay(`批量接入完成：**${eraMeta(era).label}** 的 ${list.length} 台设备全部接管。要生成报告，还是去下一个展厅？`, ['生成参观报告', '带我逛下一个展厅']);
+}
+
+/* 主动 Agent：在 3D 里隔一阵主动发现附近设备 */
+let proactiveTimer = null;
+let lastProactiveAt = 0;
+function startProactiveAgent() {
+  if (proactiveTimer) return;
+  proactiveTimer = setInterval(() => {
+    if (!state.view3d || state.hack.active || state.tour || !state.ready) return;
+    if (!$('hack-scan').classList.contains('hidden')) return;
+    if (Date.now() - lastProactiveAt < 50000) return;
+    const list = (state.data.exhibits || []).filter((e) => e.scene === state.era && e.pos3d && !state.hack.done.includes(e.id));
+    if (!list.length) return;
+    const ex = list[Math.floor(Math.random() * list.length)];
+    lastProactiveAt = Date.now();
+    agentSay(`检测到附近的 **${ex.name}**（${ex.year}），信号强度稳定。要扫描它吗？`, [`扫描${ex.name}`, '打开 AR 扫描']);
+  }, 18000);
 }
 
 /* ---------------- 老式摄像机模式 ---------------- */
@@ -1214,6 +1354,7 @@ async function sendMessage(text) {
   saveMemory();
   state.history.push({ role: 'user', content: text });
   const typing = addMsg('agent typing', '小奖正在想…');
+  setAgentState('规划中');
   try {
     const res = await state.agent.respond(text, {
       era: state.era,
@@ -1233,8 +1374,10 @@ async function sendMessage(text) {
     if (state.history.length > 24) state.history.splice(0, state.history.length - 24);
     if (res.chips) renderChips(res.chips);
     speak(res.reply);
+    setAgentState('执行中');
     await execActions(res.actions || [], traceEl);
     finishTrace(traceEl);
+    setAgentState('监听中');
   } catch (err) {
     typing.remove();
     addMsg('agent', '讲解员开小差了，请再试一次。');
@@ -1333,6 +1476,21 @@ async function execActions(actions, traceEl) {
       const ex = state.agent.byId.get(a.id) || state.agent.byId.get(state.selectedId);
       if (ex) openSimulator(ex, { eraLabel: eraMeta(ex.scene).label });
       await sleep(160);
+    } else if (a.type === 'hackAll') {
+      await hackAllInEra(a.era || state.era);
+      await sleep(200);
+    } else if (a.type === 'openHack') {
+      setHackMode(true);
+      await sleep(200);
+    } else if (a.type === 'scan' || a.type === 'hack') {
+      const ex = state.agent.byId.get(a.id) || state.agent.byId.get(state.selectedId);
+      if (ex) {
+        setHackMode(true);
+        await sleep(160);
+        scanExhibit(ex);
+        if (a.type === 'hack') setTimeout(runHack, 1800);
+        await sleep(700);
+      }
     } else if (a.type === 'camera') {
       if (!state.cam.active) enterCamcorder();
       if (a.focal || a.tele || a.nd) {
@@ -1579,6 +1737,10 @@ function bindUI() {
   $('btn-tour-stop').addEventListener('click', () => stopTour());
   $('btn-camera').addEventListener('click', () => (state.cam.active ? exitCamcorder() : enterCamcorder()));
   $('btn-godot3d').addEventListener('click', () => setView3D(!state.view3d, state.era));
+  $('btn-hack').addEventListener('click', () => setHackMode(!state.hack.active));
+  $('hack-close').addEventListener('click', () => closeHackScan());
+  $('hack-done').addEventListener('click', () => closeHackScan());
+  $('hack-run').addEventListener('click', runHack);
   const modeBtn = $('btn-mode3d');
   if (modeBtn) modeBtn.addEventListener('click', () => setMode(is3D() ? 'pano' : '3d'));
   $('btn-cam-shot').addEventListener('click', capturePhoto);
@@ -1782,6 +1944,7 @@ function bindUI() {
       }
       if (k === 'shift') state.free.keys.add('shift');
     }
+    if (e.key === 'h' || e.key === 'H') { setHackMode(!state.hack.active); return; }
     if (e.key === 'r' || e.key === 'R') { state.free.pos.set(0, 0, 0); state.free.vel.set(0, 0, 0); if (state.cam.active) { state.cam.pos.set(0, 0, 0); state.cam.vel.set(0, 0, 0); } setView(0, 0, 72, 500); toast('已回到初始机位'); }
     if (e.key === 'v' || e.key === 'V') openEvolution();
     if (e.key === 'c' || e.key === 'C') { state.cam.active ? exitCamcorder() : enterCamcorder(); }
@@ -1812,7 +1975,7 @@ function greet() {
   const recent = (state.memory.visited || []).slice(-1)[0];
   const extra = recent ? `\n上次你看到过 **${recent.name}**，这次可以接着逛。` : '';
   addMsg('agent', fmtReply(
-    `欢迎来到 **数码考古馆**，我是讲解员**小奖**。\n当前是 **${label}**。你可以按 **WASD 自由走动**（按住左键拖拽环视），点金色光点看展品，或直接说“带我去看传真机”。${extra}\n我还能**自主巡展**（自己规划路线带你走完），也能按你的参观记录**生成报告**。`
+    `欢迎来到 **数码考古馆**，我是讲解员**小奖**。\n当前是 **${label}**。你可以按 **WASD 自由走动**（按住左键拖拽环视），点金色光点看展品，或直接说“带我去看传真机”。${extra}\n我还接入了 **ARCH-OS**：可以扫描/接管场景里的设备，也能**自主巡展**、按你的参观记录**生成报告**。`
   ));
   renderChips(['带我去看传真机', '自主巡展', '生成参观报告', '打开摄像机']);
 }
@@ -1858,6 +2021,7 @@ async function boot() {
       setTimeout(() => {
         setView3D(true, state.era);
         if (!$('chat-log').children.length) greet();
+        startProactiveAgent();
       }, 500);
     }
   } catch (err) {

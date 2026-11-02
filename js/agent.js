@@ -158,6 +158,28 @@ export function createAgent(data) {
       }, text, ctx);
     }
 
+    // ARCH-OS / 看门狗：扫描、入侵、批量接管
+    if (has(text, ['扫描', '入侵', '黑入', '接管', '接入', '破解', '看门狗', 'arch-os', 'archos', 'ctos', '所有设备', '全部设备', '全部接入'])) {
+      const all = has(text, ['所有', '全部', '整个展厅', '本展厅', '全馆', '一台不落']);
+      const era = ctx.era || ERA_IDS[0];
+      if (all) {
+        return withTrace({
+          reply: `收到任务：我会把 **${eraMeta(era).label}** 的设备逐台扫描、接管，边走边汇报进度。想停随时说“停”。`,
+          actions: [{ type: 'hackAll', era }],
+          chips: ['生成参观报告', '去下一个展厅', '打开 AR 扫描'],
+        }, text, ctx);
+      }
+      let target = matchExhibits(text)[0];
+      if (!target && ctx.selectedId) target = byId.get(ctx.selectedId);
+      if (!target) target = listByEra(era)[0];
+      const doHack = has(text, ['入侵', '黑入', '接管', '破解', '接入']);
+      return withTrace({
+        reply: `ARCH-OS 链路已接入。${target ? `目标锁定：**${target.name}**（${target.year}）。` : ''}${doHack ? '正在尝试接管设备——' : '先读一遍设备档案，'}${target && target.tagline ? `它当年的标签是「${target.tagline}」。` : ''}`,
+        actions: target ? [{ type: doHack ? 'hack' : 'scan', id: target.id }] : [{ type: 'openHack' }],
+        chips: ['入侵它', '扫描下一台', '把本展厅全部接入'],
+      }, text, ctx);
+    }
+
     // 长焦 / 数码变焦 / 画质问题：给物理玻璃方案
     if (has(text, ['拍远', '长焦', '增距', '玻璃', '太模糊', '模糊', '数码变焦', '放大', '看不清', '拍清楚'])) {
       const digital = has(text, ['数码变焦', '裁切', '放大']);
@@ -450,6 +472,8 @@ export function createAgent(data) {
         '变焦', '拉近', '推近', '放大', '广角', '拉远', '曝光', '调亮', '调暗', '颗粒', '噪点', '暖色', '冷色', '滤镜',
         '风格', '家庭录像', '电视新闻', '夜景', '电影感', '黑白', '阳光', '复古', '胶片', '氛围', '感觉',
         '拍远', '长焦', '增距', '玻璃', '太模糊', '数码变焦', '看不清',
+        '扫描', '入侵', '黑入', '接管', '接入', '破解', '看门狗', 'arch-os', 'archos',
+        '所有设备', '全部设备', '全部接入',
         '使用模拟', '模拟', '怎么用', '用一下', '用一次', '试一下', '演示一下', '怎么操作'])) {
         const local = localRespond(text, ctx);
         return { ...local, source: 'local' };
