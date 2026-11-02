@@ -1,4 +1,4 @@
-// 数码考古馆 · 360° 实景版主程序
+﻿// 数码考古馆 · 360° 实景版主程序
 // 场景为 Godot 原始场景渲染出的全景图（保留游戏原始光影），Agent 通过「转头 + 变焦」带路。
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -1065,7 +1065,7 @@ function updateModeButton() {
   if (b) b.textContent = state.view3d ? '360 实景' : '3D 漫游';
   const hint = $('hint-bar');
   if (hint) hint.textContent = state.view3d
-    ? '3D 漫游：点击画面后 WASD 走动 · 鼠标环视 · Shift 加速 · Q/E 升降 · Esc 释放鼠标 · 点金色光点看展品'
+    ? '3D 漫游：按住左键拖拽环视 · WASD 走动 · Shift 加速 · Q/E 升降 · 点金色光点看展品'
     : '拖动环视 · WASD/方向键飞行（Shift 加速/QE 升降）· 右键拖拽平移 · 滚轮缩放';
 }
 
