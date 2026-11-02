@@ -901,6 +901,19 @@ async function setMode(mode) {
     document.body.classList.add('mode-3d');
     hotspotLayer.style.display = 'none';
     state.free.vel.set(0, 0, 0);
+    // 背景用该场景的实景全景做天空（GLB 不含游戏天空/水面 shader）
+    try {
+      const meta = eraMeta(state.era);
+      await new Promise((resolve) => {
+        loader.load(meta.pano, (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.mapping = THREE.EquirectangularReflectionMapping;
+          scene.background = tex;
+          scene.backgroundIntensity = 1.0;
+          resolve();
+        }, undefined, () => resolve());
+      });
+    } catch (e) {}
     await loadModel3D(state.era);
   } else {
     document.body.classList.remove('mode-3d');
@@ -1375,7 +1388,8 @@ function bindUI() {
   $('btn-autotour').addEventListener('click', () => startAutonomousTour('5分钟精华'));
   $('btn-tour-stop').addEventListener('click', () => stopTour());
   $('btn-camera').addEventListener('click', () => (state.cam.active ? exitCamcorder() : enterCamcorder()));
-  $('btn-mode3d').addEventListener('click', () => setMode(is3D() ? 'pano' : '3d'));
+  const modeBtn = $('btn-mode3d');
+  if (modeBtn) modeBtn.addEventListener('click', () => setMode(is3D() ? 'pano' : '3d'));
   $('btn-cam-shot').addEventListener('click', capturePhoto);
   $('btn-cam-exit').addEventListener('click', exitCamcorder);
   ['cam-exposure', 'cam-grain', 'cam-warm'].forEach((id) => {
@@ -1635,10 +1649,6 @@ async function boot() {
 
     if (exParam && state.agent.byId.has(exParam)) {
       setTimeout(() => selectExhibit(exParam, { fly: true, openCard: true }), 500);
-    }
-
-    if (params.get('mode') === '3d') {
-      setTimeout(() => setMode('3d'), 400);
     }
 
     if (!CONFIG.demo) {
